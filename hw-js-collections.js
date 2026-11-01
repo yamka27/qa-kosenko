@@ -119,13 +119,12 @@ console.assert(
 );
 
 const getReport = (results) => {
-const sorted = results.toSorted(); // було var, sort мутує оригінальний масив
-const names = sorted.map(({ name }) => name.toUpperCase());//було var і звичайна функція
-const text = names.reduce((a, name, c) => { //було var, замінив for на reduce
-return c === 0 ? name : a + ', ' + name;
-}, '');
-return `Tests: ${text}`; //раніше рядки по суті додавалися, зараз через template literals
+    const sorted = results.toSorted((a, b) => a.name.localeCompare(b.name));
+    const names = sorted.map(({ name }) => name.toUpperCase());
+    const text = names.reduce((acc, name, i) => acc + (i > 0 ? ', ' : '') + name, '');
+    return `Tests: ${text}`;
 };
+
 console.assert(
 getReport([{ name: 'Vasya' }, { name: 'Kolya' }]) === 'Tests: KOLYA, VASYA',
 'Wrong output'
