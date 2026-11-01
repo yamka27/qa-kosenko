@@ -154,3 +154,9 @@ getReport([]) === 'Tests: ',
 console.assert(
 getReport([{ name: 'Vasya' }]) === 'Tests: VASYA',
 'Wrong output')
+// Перевірка, що вхідний масив не мутує
+const testInput = [{ name: 'Vasya' }, { name: 'Kolya' }];
+const before = JSON.stringify(testInput);
+getReport(testInput);
+const after = JSON.stringify(testInput);
+console.assert(before === after, 'Вхідний масив змінився після виклику getReport!');
