@@ -119,9 +119,27 @@ console.assert(
 );
 
 const getReport = (results) => {
+    // 1. Що було: results.sort()
+    //    Чому баг: sort() мутує вхідний масив — це побічний ефект,
+    //    оригінальний масив results змінюється після виклику функції
+    //    Як виправлено: toSorted() повертає новий масив, не мутує оригінал
     const sorted = results.toSorted((a, b) => a.name.localeCompare(b.name));
+
+    // 2. Що було: sorted.map(function (r) { r.name.toUpperCase(); })
+    //    Чому баг: у тілі функції з фігурними дужками { } немає return,
+    //     тому map повертає масив [undefined, undefined, ...]
+    //     і вивід стає 'Tests: , , ' замість імен
+    //    Як виправлено: стрілкова функція ({ name }) => name.toUpperCase()
+    //    з неявним return + деструктуризація { name }
     const names = sorted.map(({ name }) => name.toUpperCase());
+
+    // 3. Що було: for-цикл з накопиченням text + ', ' в кінці кожного елемента
+    //    Чому баг: після останнього елемента залишається зайвий хвіст ', '
+    //    (наприклад 'Tests: VASYA, KOLYA, ' замість 'Tests: VASYA, KOLYA')
+    //    Як виправлено: reduce з умовою (i > 0 ? ', ' : '') — роздільник
+    //    додається тільки перед елементом, хвоста немає
     const text = names.reduce((acc, name, i) => acc + (i > 0 ? ', ' : '') + name, '');
+
     return `Tests: ${text}`;
 };
 
