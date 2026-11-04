@@ -1,85 +1,85 @@
-// Д1
+// ========== Стартовий код ==========
 const USERS = { 1: { id: 1, name: 'Olena' }, 2: { id: 2, name: 'Taras' } };
 const ORDERS = { 1: [120, 80, 45.5], 2: [] };
 
 function getUser(id, callback) {
-    setTimeout(() => {
-        const user = USERS[id];
-        if (!user) return callback(new Error(`User ${id} not found`));
-        callback(null, user);
-    }, 300);
+  setTimeout(() => {
+    const user = USERS[id];
+    if (!user) return callback(new Error(`User ${id} not found`));
+    callback(null, user);
+  }, 300);
 }
 
 function getOrders(userId, callback) {
-    setTimeout(() => callback(null, ORDERS[userId] ?? []), 300);
+  setTimeout(() => callback(null, ORDERS[userId] ?? []), 300);
 }
 
-function printTotalCb(id, done) {
-    getUser(id, (err, user) => {
-        if (err) return done(err);          
-        getOrders(user.id, (err, orders) => {
-            if (err) return done(err);
-            const sum = orders.reduce((a, b) => a + b, 0);
-            done(null, `${user.name}: ${sum}`);
-        });
+// ========== Д1: Три стилі ==========
+
+// Версія 1: тільки колбеки
+const printTotalCb = (id, done) => {
+  getUser(id, (err, user) => {
+    if (err) return done(err);
+    getOrders(user.id, (err, orders) => {
+      if (err) return done(err);
+      const sum = orders.reduce((a, b) => a + b, 0);
+      console.log(`${user.name}: ${sum}`);
+      done(null);
     });
-}
+  });
+};
 
-function getUserAsync(id) {
-    return new Promise((resolve, reject) => {
-        getUser(id, (err, user) => {
-            if (err) reject(err);
-            else resolve(user);
-        });
-    });
-}
+// Версія 2: проміси (плоский ланцюжок, без вкладених .then)
+const getUserAsync = (id) => new Promise((resolve, reject) => {
+  getUser(id, (err, user) => err ? reject(err) : resolve(user));
+});
 
-function getOrdersAsync(userId) {
-    return new Promise((resolve, reject) => {
-        getOrders(userId, (err, orders) => {
-            if (err) reject(err);
-            else resolve(orders);
-        });
-    });
-}
+const getOrdersAsync = (userId) => new Promise((resolve, reject) => {
+  getOrders(userId, (err, orders) => err ? reject(err) : resolve(orders));
+});
 
-function printTotalThen(id) {
-    return getUserAsync(id)
-        .then(user => getOrdersAsync(user.id).then(orders => ({ user, orders })))
-        .then(({ user, orders }) => {
-            const sum = orders.reduce((a, b) => a + b, 0);
-            console.log(`${user.name}: ${sum}`);
-        })
-        .catch(err => {
-            console.log(`Помилка: ${err.message}`);
-        });
-}
+const printTotalThen = (id) => {
+  let user;
+  getUserAsync(id)
+    .then(u => { user = u; return getOrdersAsync(u.id); })
+    .then(orders => {
+      const sum = orders.reduce((a, b) => a + b, 0);
+      console.log(`${user.name}: ${sum}`);
+    })
+    .catch(err => console.log(`Помилка: ${err.message}`));
+};
 
-async function printTotalAwait(id) {
-    try {
-        const user = await getUserAsync(id);
-        const orders = await getOrdersAsync(user.id);
-        const sum = orders.reduce((a, b) => a + b, 0);
-        console.log(`${user.name}: ${sum}`);
-    } catch (err) {
-        console.log(`Помилка: ${err.message}`);
-    }
-}
+// Версія 3: async/await + try/catch, без жодного .then
+const printTotalAwait = async (id) => {
+  try {
+    const user = await getUserAsync(id);
+    const orders = await getOrdersAsync(user.id);
+    const sum = orders.reduce((a, b) => a + b, 0);
+    console.log(`${user.name}: ${sum}`);
+  } catch (err) {
+    console.log(`Помилка: ${err.message}`);
+  }
+};
 
-console.log('Callbacks:');
-printTotalCb(1, (err, result) => { if (err) console.log(`Помилка: ${err.message}`); else console.log(result); });
-printTotalCb(2, (err, result) => { if (err) console.log(`Помилка: ${err.message}`); else console.log(result); });
-printTotalCb(3, (err, result) => { if (err) console.log(`Помилка: ${err.message}`); else console.log(result); });
-
-console.log('Promises:');
+// Тести Д1
+console.log('--- Д1: id=1 ---');
+printTotalCb(1, (err) => { if (err) console.log(`Помилка: ${err.message}`); });
 printTotalThen(1);
-printTotalThen(2);
-printTotalThen(3);
-
-console.log('Async/awaits:');
 printTotalAwait(1);
-printTotalAwait(2);
-printTotalAwait(3);
+
+setTimeout(() => {
+  console.log('--- Д1: id=2 ---');
+  printTotalCb(2, (err) => { if (err) console.log(`Помилка: ${err.message}`); });
+  printTotalThen(2);
+  printTotalAwait(2);
+}, 700);
+
+setTimeout(() => {
+  console.log('--- Д1: id=3 ---');
+  printTotalCb(3, (err) => { if (err) console.log(`Помилка: ${err.message}`); });
+  printTotalThen(3);
+  printTotalAwait(3);
+}, 1400);
 
 // Д2 
 // ФРАГМЕНТ A
@@ -222,73 +222,85 @@ setTimeout(() => {
     })();
 }, 8000);
 
-//ДЗ 4
+// ========== Д4: Послідовно vs паралельно ==========
 
-setTimeout(() => {
-    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms)); 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    async function fetchUser(id) { 
-        await delay(500);
-        if (id === 4) throw new Error(`User ${id}: 500 Internal Server Error`);
-        return { id, name: `user-${id}` };
+async function fetchUser(id) {
+  await delay(500);
+  if (id === 4) throw new Error(`User ${id}: 500 Internal Server Error`);
+  return { id, name: `user-${id}` };
+}
+
+// loadSequential: for...of з await
+const loadSequential = async (ids) => {
+  const ok = [];
+  const failed = [];
+  for (const id of ids) {
+    try {
+      const user = await fetchUser(id);
+      ok.push(user);
+    } catch (e) {
+      failed.push({ id, reason: e.message });
     }
+  }
+  return { ok, failed };
+};
 
-    async function loadSequential(ids) {
-        const results = [];
-        for (const id of ids) {
-            const user = await fetchUser(id);
-            results.push(user);
-        }
-        return results;
-    }
+// loadParallel: Promise.all
+const loadParallel = async (ids) => {
+  const results = await Promise.all(ids.map(id => fetchUser(id).catch(e => ({ error: e, id }))));
+  const ok = results.filter(r => !r.error);
+  const failed = results.filter(r => r.error).map(r => ({ id: r.id, reason: r.error.message }));
+  return { ok, failed };
+};
 
-    function loadParallel(ids) {
-        return Promise.all(ids.map(id => fetchUser(id)));
-    }
+// loadReport: Promise.allSettled
+const loadReport = async (ids) => {
+  const results = await Promise.allSettled(ids.map(id => fetchUser(id)));
+  const ok = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+  const failed = results.filter(r => r.status === 'rejected').map((r, i) => {
+    const idx = ids.findIndex(id => results[i].reason?.message.includes(String(id)));
+    return { id: ids[results.indexOf(r)], reason: r.reason.message };
+  });
+  return { ok, failed };
+};
 
-    async function loadReport(ids) {
-        const results = await Promise.allSettled(ids.map(id => fetchUser(id)));
-        const ok = results
-            .filter(r => r.status === 'fulfilled')
-            .map(r => r.value);
-        const failed = results
-            .filter(r => r.status === 'rejected')
-            .map((r, idx) => {
-                const failedIndex = results.indexOf(r);
-                return { id: ids[failedIndex], reason: r.reason.message };
-            });
-        return { ok, failed };
-    }
+// Тести Д4
+// loadSequential [1,2,3]: ~1503ms
+// loadParallel [1,2,3]: ~501ms
+// loadSequential [1,2,3,4]: ~2004ms (падає на 4-му)
+// loadParallel [1,2,3,4]: ~501ms, 3 ok + 1 failed
 
-    (async () => {
-        console.log('\n loadSequential([1, 2, 3])');
-        console.time('loadSequential');
-        const seq = await loadSequential([1, 2, 3]);
-        console.timeEnd('loadSequential');
-        console.log('Result:', seq)
+(async () => {
+  console.log('\n--- Д4: loadSequential [1,2,3] ---');
+  const t1 = Date.now();
+  const seq123 = await loadSequential([1, 2, 3]);
+  console.log(`loadSequential [1,2,3]: ${Date.now() - t1}ms`, seq123);
 
-        console.log('\n--- loadParallel([1, 2, 3]) ---');
-        console.time('loadParallel');
-        const par = await loadParallel([1, 2, 3]);
-        console.timeEnd('loadParallel');
-        console.log('Result:', par)
+  console.log('\n--- Д4: loadParallel [1,2,3] ---');
+  const t2 = Date.now();
+  const par123 = await loadParallel([1, 2, 3]);
+  console.log(`loadParallel [1,2,3]: ${Date.now() - t2}ms`, par123);
 
-        console.log('\nloadParallel([1, 2, 3, 4]) з try/catch');
-        console.time('loadParallel-fail');
-        try {
-            await loadParallel([1, 2, 3, 4]);
-        } catch (err) {
-            console.log('Error:', err.message);
-        }
-        console.timeEnd('loadParallel-fail');
+  console.log('\n--- Д4: loadParallel [1,2,3,4] ---');
+  const t3 = Date.now();
+  const par1234 = await loadParallel([1, 2, 3, 4]);
+  console.log(`loadParallel [1,2,3,4]: ${Date.now() - t3}ms`, par1234);
 
-        console.log('\nloadReport([1, 2, 3, 4])');
-        console.time('loadReport');
-        const report = await loadReport([1, 2, 3, 4]);
-        console.timeEnd('loadReport');
-        console.log('Result:', report);
-    })();
-}, 10000);
+  console.log('\n--- Д4: loadSequential [1,2,3,4] з try/catch ---');
+  const t4 = Date.now();
+  try {
+    const seq1234 = await loadSequential([1, 2, 3, 4]);
+    console.log(`loadSequential [1,2,3,4]: ${Date.now() - t4}ms`, seq1234);
+  } catch (e) {
+    console.log(`loadSequential [1,2,3,4] впав: ${e.message}`);
+  }
+
+  console.log('\n--- Д4: loadReport [1,2,3,4] ---');
+  const rep = await loadReport([1, 2, 3, 4]);
+  console.log('loadReport [1,2,3,4]:', rep);
+})();
 
 /*
 Я б взяв loadReport (Promise.allSettled), бо реальні апі іноді падають через мережеві помилки і паралельне завантаження відхилиться повністю, тому ми втратимо всі успішні результати
